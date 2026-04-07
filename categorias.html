@@ -8,20 +8,12 @@
         body { background:#000; color:#fff; font-family:sans-serif; padding:20px; text-align:center; }
         .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
         .card { 
-            background:#111; 
-            border:1px solid #007bff; 
-            padding:20px 10px; 
-            border-radius:8px; 
-            font-weight:bold; 
-            text-transform:uppercase; 
-            font-size:11px; 
-            min-height: 60px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background:#111; border:1px solid #007bff; padding:20px 10px; 
+            border-radius:8px; font-weight:bold; text-transform:uppercase; 
+            font-size:11px; min-height:60px; display:flex; align-items:center; justify-content:center;
         }
         .card:active { background:#007bff; }
-        #status { color:#007bff; margin-top:50px; }
+        #status { color:#007bff; margin-top:50px; font-weight:bold; }
     </style>
 </head>
 <body>
@@ -31,52 +23,50 @@
     <div id="container" class="grid"></div>
 
     <script>
-        // Pega os dados salvos no login
-        const listaM3U = localStorage.getItem('cliente_lista');
-        const nomeCli = localStorage.getItem('cliente_nome');
-        
-        if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
-
         async function carregarComBypass() {
             const container = document.getElementById('container');
             const status = document.getElementById('status');
 
+            // 1. Pega os dados e limpa o nome
+            const listaM3U = localStorage.getItem('cliente_lista');
+            const nomeCli = localStorage.getItem('cliente_nome');
+            if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
+
             if (!listaM3U) {
-                status.innerHTML = "Erro: Link não encontrado.";
+                status.innerHTML = "Erro: Link não encontrado. Faça login novamente.";
                 return;
             }
 
             try {
-                // LIMPEZA: Garante que o link não tenha barras invertidas extras (\/)
-                const linkLimpo = listaM3U.replace(/\\/g, "");
+                // 2. LIMPEZA TOTAL: Remove todas as barras invertidas (\) que o banco gera
+                const linkLimpo = listaM3U.replace(/\\/g, "").trim(); 
                 
-                // Endereço do seu Proxy na Hostinger
+                // 3. Chamada ao seu Proxy na Hostinger
                 const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
-                
-                const response = await fetch(meuProxy + encodeURIComponent(linkLimpo));
+                const urlFinal = meuProxy + encodeURIComponent(linkLimpo);
+
+                const response = await fetch(urlFinal);
                 const texto = await response.text();
 
                 if (texto.includes("#EXTM3U")) {
-                    // SALVA A LISTA COMPLETA: Importante para a página de canais carregar rápido
+                    // Salva a lista para a próxima página carregar instantâneo
                     localStorage.setItem('m3u_cache', texto);
                     
                     status.style.display = 'none';
                     const categorias = new Set();
                     const linhas = texto.split('\n');
 
-                    // Extrai os nomes das categorias
                     linhas.forEach(l => {
                         const m = l.match(/group-title="([^"]+)"/);
                         if (m) categorias.add(m[1]);
                     });
 
-                    // Cria os botões na tela
                     Array.from(categorias).sort().forEach(cat => {
                         const div = document.createElement('div');
                         div.className = 'card';
                         div.innerText = cat;
                         
-                        // REDIRECIONAMENTO: Salva qual foi clicada e vai para a lista de canais
+                        // Redirecionamento
                         div.onclick = () => {
                             localStorage.setItem('cat_escolhida', cat);
                             window.location.href = 'canais.html';
@@ -85,12 +75,11 @@
                         container.appendChild(div);
                     });
                 } else {
-                    throw new Error("Lista não recebida");
+                    throw new Error("Resposta inválida");
                 }
             } catch (e) {
-                status.innerHTML = "Erro de Sincronização. Verifique o arquivo proxy.php na Hostinger.";
+                status.innerHTML = "Erro de Sincronização.<br>Tente fechar o app e abrir novamente.";
                 status.style.color = "red";
-                console.error(e);
             }
         }
 
