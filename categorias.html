@@ -5,19 +5,72 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body { background-color: #0a0a0a; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
-        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
-        .btn-voltar { background: #333; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; margin-right: 15px; }
-        .lista-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-        .categoria-card { background: #151515; border: 1px solid #333; padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; }
-        .categoria-card:hover { border-color: #007bff; }
-        #status-msg { text-align: center; margin-top: 50px; color: #007bff; }
+        /* Estilo seguindo o padrão Black & Blue */
+        body { 
+            background-color: #0a0a0a; 
+            color: white; 
+            font-family: 'Segoe UI', sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+        }
+        .header { 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 2px solid #007bff; 
+            padding-bottom: 10px; 
+            margin-bottom: 25px; 
+        }
+        .btn-voltar { 
+            background: #222; 
+            color: white; 
+            padding: 10px 18px; 
+            border-radius: 8px; 
+            text-decoration: none; 
+            margin-right: 20px;
+            border: 1px solid #333;
+            font-size: 14px;
+        }
+        .lista-categorias { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); 
+            gap: 15px; 
+        }
+        .categoria-card { 
+            background: #151515; 
+            border: 1px solid #333; 
+            padding: 20px; 
+            text-align: center; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            transition: 0.3s;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 13px;
+        }
+        .categoria-card:hover { 
+            border-color: #007bff; 
+            background: #007bff22;
+            transform: translateY(-3px);
+        }
+        #status-msg { 
+            text-align: center; 
+            margin-top: 60px; 
+            color: #007bff; 
+            font-size: 18px;
+        }
+        .erro-alerta {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.1);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #ff4444;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <a href="index.html" class="btn-voltar">← Voltar</a>
+        <a href="index.html" class="btn-voltar">← SAIR</a>
         <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
     </div>
 
@@ -25,9 +78,11 @@
     <div class="lista-categorias" id="categorias-container"></div>
 
     <script>
+        // Pega os dados salvos no login
         const listaM3U = localStorage.getItem('cliente_lista');
         const nomeCliente = localStorage.getItem('cliente_nome');
 
+        // Exibe o nome do cliente que veio do banco
         if (nomeCliente) {
             document.getElementById('nome-usuario').innerText = "Olá, " + nomeCliente;
         }
@@ -37,54 +92,63 @@
             const statusMsg = document.getElementById('status-msg');
 
             if (!listaM3U) {
-                statusMsg.innerText = "Lista não encontrada no sistema.";
+                statusMsg.innerHTML = "<div class='erro-alerta'>Erro: Lista não encontrada no LocalStorage.</div>";
                 return;
             }
 
             try {
-                // USANDO PROXY PARA EVITAR ERRO DE CONEXÃO (CORS)
-                const proxyUrl = 'https://api.allorigins.win/raw?url=';
-                const response = await fetch(proxyUrl + encodeURIComponent(listaM3U));
+                // SOLUÇÃO PARA O ERRO DE CONEXÃO: Usa um Proxy de CORS gratuito
+                const proxy = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxy + encodeURIComponent(listaM3U));
                 
-                if (!response.ok) throw new Error("Erro ao baixar arquivo M3U");
+                if (!response.ok) throw new Error("Não foi possível acessar o servidor da lista.");
 
-                const data = await response.text();
-                const linhas = data.split('\n');
-                const categorias = new Set();
+                const textoM3U = await response.text();
+                const linhas = textoM3U.split('\n');
+                const categoriasSet = new Set();
 
+                // Varre o arquivo M3U em busca de categorias (group-title)
                 linhas.forEach(linha => {
-                    // Procura por group-title ou EXTGRP na sua lista
-                    const match = linha.match(/group-title="([^"]+)"/) || linha.match(/#EXTGRP:([^\r\n]+)/);
-                    if (match) {
-                        categorias.add(match[1]);
+                    if (linha.includes('group-title="')) {
+                        const match = linha.match(/group-title="([^"]+)"/);
+                        if (match && match[1].trim() !== "") {
+                            categoriasSet.add(match[1]);
+                        }
                     }
                 });
 
-                if (categorias.size === 0) {
-                    statusMsg.innerText = "Sua lista parece estar vazia ou o link está quebrado.";
+                if (categoriasSet.size === 0) {
+                    statusMsg.innerHTML = "<div class='erro-alerta'>A lista foi carregada, mas não encontramos categorias nela.</div>";
                 } else {
-                    statusMsg.style.display = 'none';
-                    // Criar botões para cada categoria encontrada
-                    Array.from(categorias).sort().forEach(cat => {
-                        const div = document.createElement('div');
-                        div.className = 'categoria-card';
-                        div.innerText = cat;
-                        div.onclick = () => {
-                            localStorage.setItem('categoria_selecionada', cat);
-                            // Aqui você enviaria para uma página de canais, ex: canais.html
-                            alert('Abrindo canais de: ' + cat);
+                    statusMsg.style.display = 'none'; // Esconde a mensagem de carregando
+                    
+                    // Ordena e cria os botões na tela
+                    Array.from(categoriasSet).sort().forEach(cat => {
+                        const card = document.createElement('div');
+                        card.className = 'categoria-card';
+                        card.innerText = cat;
+                        
+                        card.onclick = () => {
+                            // Salva a categoria escolhida e vai para a lista de canais
+                            localStorage.setItem('categoria_ativa', cat);
+                            alert("Você selecionou: " + cat + "\n(Próximo passo: criar a página de canais)");
                         };
-                        container.appendChild(div);
+                        
+                        container.appendChild(card);
                     });
                 }
 
             } catch (error) {
-                console.error(error);
-                statusMsg.innerHTML = "Erro ao carregar lista.<br><small>Verifique se o link no painel termina em .php ou .m3u8</small>";
-                statusMsg.style.color = "red";
+                console.error("Erro no processamento:", error);
+                statusMsg.innerHTML = `
+                    <div class="erro-alerta">
+                        <strong>Erro ao carregar lista!</strong><br>
+                        O servidor da lista está demorando a responder ou bloqueou a conexão.
+                    </div>`;
             }
         }
 
+        // Inicia a carga assim que a página abre
         carregarCategorias();
     </script>
 </body>
