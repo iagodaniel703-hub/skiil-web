@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skkil Player - Seleção</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            background-color: #0a0a0a;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* Topo com Logo e Boas-vindas */
+        .header {
+            width: 100%;
+            padding: 20px;
+            text-align: center;
+            background: linear-gradient(180deg, #151515 0%, #0a0a0a 100%);
+        }
+
+        .logo-placeholder {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007bff;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+
+        #nome_usuario {
+            font-size: 14px;
+            color: #888;
+        }
+
+        /* Grade de Opções Principais */
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            padding: 20px;
+            width: 90%;
+            max-width: 600px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 25px 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            border-color: #007bff;
+            background: #222;
+            transform: translateY(-5px);
+        }
+
+        .card i {
+            display: block;
+            font-size: 30px;
+            margin-bottom: 10px;
+        }
+
+        .card span {
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+        }
+
+        /* Rodapé de Configurações */
+        .footer-menu {
+            margin-top: auto;
+            width: 100%;
+            padding: 20px;
+            display: flex;
+            justify-content: space-around;
+            background: #111;
+            border-top: 1px solid #222;
+        }
+
+        .footer-item {
+            font-size: 12px;
+            color: #aaa;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .footer-item:hover { color: #fff; }
+
+        /* Estilo para ícones (Simulando FontAwesome) */
+        .icon-live { color: #ff4444; }
+        .icon-movie { color: #ffbb33; }
+        .icon-series { color: #00C851; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo-placeholder" id="app_logo">SKKIL PLAYER</div>
+        <div id="nome_usuario">Carregando...</div>
+    </div>
+
+    <div class="menu-grid">
+        <div class="card" onclick="abrirCategoria('live')">
+            <i class="icon-live">📺</i>
+            <span>AO-VIVO</span>
+        </div>
+        <div class="card" onclick="abrirCategoria('movies')">
+            <i class="icon-movie">🎬</i>
+            <span>FILMES</span>
+        </div>
+        <div class="card" onclick="abrirCategoria('series')">
+            <i class="icon-series">📂</i>
+            <span>SÉRIES</span>
+        </div>
+    </div>
+
+    <div class="footer-menu">
+        <div class="footer-item" onclick="atualizarLista()">
+            <i>🔄</i>
+            <span>Atualizar lista</span>
+        </div>
+        <div class="footer-item" onclick="window.location.href='config.html'">
+            <i>⚙️</i>
+            <span>Configuração</span>
+        </div>
+    </div>
+
+    <script>
+        // Ao carregar a página, pegamos os dados salvos no login
+        window.onload = function() {
+            const nome = localStorage.getItem('cliente_nome');
+            const validade = localStorage.getItem('cliente_validade');
+
+            if (!nome) {
+                // Se não tiver login, volta para o index
+                window.location.href = "index.html";
+            } else {
+                document.getElementById('nome_usuario').innerText = `Olá, ${nome} | Expira em: ${validade || 'Ilimitado'}`;
+            }
+        };
+
+        function abrirCategoria(tipo) {
+            const lista = localStorage.getItem('cliente_lista');
+            console.log("Abrindo " + tipo + " usando a lista: " + lista);
+            // Aqui você redirecionará para a tela que lista os canais/filmes
+            alert("Carregando conteúdo de " + tipo + "...");
+        }
+
+        function atualizarLista() {
+            alert("Sincronizando com o servidor skkilarena.com.br...");
+            location.reload(); // Recarrega para buscar novos dados
+        }
+    </script>
+</body>
+</html>
