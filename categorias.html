@@ -5,127 +5,87 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body { background: #050505; color: #fff; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 15px; }
-        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 15px; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        
-        /* Estilo dos Cards de Categoria */
         .card { 
-            background: linear-gradient(145deg, #111, #1a1a1a); 
-            border: 1px solid #222; 
-            padding: 25px 10px; 
-            text-align: center; 
-            border-radius: 12px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            font-size: 11px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: 0.2s;
+            background: #111; border: 1px solid #222; padding: 25px 10px; 
+            text-align: center; border-radius: 12px; font-weight: bold; 
+            text-transform: uppercase; font-size: 11px;
         }
-        .card:active { 
-            transform: scale(0.95); 
-            border-color: #007bff; 
-            background: #007bff22;
-        }
-
-        /* Skeleton Loading (Animação de carregar) */
-        .skeleton {
-            background: #1a1a1a;
-            height: 80px;
-            border-radius: 12px;
-            animation: pulse 1.5s infinite;
-        }
-        @keyframes pulse {
-            0% { opacity: 0.5; }
-            50% { opacity: 1; }
-            100% { opacity: 0.5; }
-        }
-        #status { text-align: center; margin-top: 20px; color: #007bff; font-size: 14px; }
+        .card:active { background: #007bff; border-color: #007bff; }
+        #status { text-align: center; margin-top: 40px; color: #007bff; }
+        .erro-box { border: 1px solid red; padding: 15px; color: #ff6666; border-radius: 10px; font-size: 13px; }
     </style>
 </head>
 <body>
 
-    <div class="header">
-        <h3 id="nome-usuario" style="margin:0; font-size: 16px;">SKKIL PLAYER</h3>
-    </div>
-
-    <div id="status">Sincronizando lista...</div>
-
-    <div id="loading-grid" class="grid">
-        <div class="skeleton"></div><div class="skeleton"></div>
-        <div class="skeleton"></div><div class="skeleton"></div>
-        <div class="skeleton"></div><div class="skeleton"></div>
-    </div>
-
-    <div id="container" class="grid" style="display:none;"></div>
+    <h3 id="nome-user" style="text-align:center">SKKIL PLAYER</h3>
+    <div id="status">Limpando conexão e carregando...</div>
+    <div id="container" class="grid"></div>
 
     <script>
-        const listaUrl = localStorage.getItem('cliente_lista');
-        const nomeCli = localStorage.getItem('cliente_nome');
-        // Usando o seu proxy da Hostinger para burlar o bloqueio
-        const proxy = "https://skkilarena.com.br/proxy.php?url="; 
-
-        if(nomeCli) document.getElementById('nome-usuario').innerText = "Olá, " + nomeCli;
-
-        async function obterDados() {
-            const status = document.getElementById('status');
-            const loadingGrid = document.getElementById('loading-grid');
+        async function carregarTudo() {
             const container = document.getElementById('container');
-
-            // 1. Verifica se já existe a lista em Cache no celular para ser instantâneo
-            let listaSalva = localStorage.getItem('m3u_cache');
+            const status = document.getElementById('status');
             
-            if (!listaSalva) {
-                try {
-                    // Se não tiver cache, busca na Hostinger
-                    const response = await fetch(proxy + encodeURIComponent(listaUrl));
-                    listaSalva = await response.text();
-                    
-                    if (!listaSalva.includes("#EXTM3U")) throw new Error();
-                    
-                    // Salva no LocalStorage do celular para as próximas vezes
-                    localStorage.setItem('m3u_cache', listaSalva);
-                } catch (e) {
-                    status.innerHTML = "<b style='color:red'>Erro ao carregar lista. Verifique sua conexão.</b>";
-                    loadingGrid.style.display = 'none';
-                    return;
-                }
+            // 1. Pega os dados do localStorage
+            const nome = localStorage.getItem('cliente_nome');
+            const linkBruto = localStorage.getItem('cliente_lista');
+            if(nome) document.getElementById('nome-user').innerText = "Olá, " + nome;
+
+            if(!linkBruto) {
+                status.innerHTML = "Erro: Link não encontrado. Faça login novamente.";
+                return;
             }
 
-            // 2. Processa o texto da lista
-            const categoriasSet = new Set();
-            const linhas = listaSalva.split('\n');
+            try {
+                // 2. LIMPEZA CRÍTICA: Remove as barras invertidas (\/) que o banco gera
+                const urlLimpa = linkBruto.replace(/\\/g, "");
+                
+                // 3. Usa o SEU proxy na Hostinger (Verifique se o nome do arquivo está correto)
+                const meuProxy = "https://skkilarena.com.br/proxy.php?url=";
+                
+                const response = await fetch(meuProxy + encodeURIComponent(urlLimpa));
+                const data = await response.text();
 
-            linhas.forEach(linha => {
-                const match = linha.match(/group-title="([^"]+)"/);
-                if (match && match[1].trim() !== "") {
-                    categoriasSet.add(match[1]);
+                if (!data.includes("#EXTM3U")) {
+                    throw new Error("Resposta inválida do servidor.");
                 }
-            });
 
-            // 3. Monta os cards na tela
-            Array.from(categoriasSet).sort().forEach(cat => {
-                const div = document.createElement('div');
-                div.className = 'card';
-                div.innerText = cat;
-                
-                // AÇÃO DO CLIQUE: Salva a categoria e leva para a lista de canais
-                div.onclick = () => {
-                    localStorage.setItem('cat_escolhida', cat);
-                    window.location.href = 'canais.html';
-                };
-                
-                container.appendChild(div);
-            });
+                // 4. Salva no cache para as próximas páginas
+                localStorage.setItem('m3u_cache', data);
 
-            // Esconde o loading e mostra os canais
-            loadingGrid.style.display = 'none';
-            status.style.display = 'none';
-            container.style.display = 'grid';
+                const categorias = new Set();
+                const linhas = data.split('\n');
+
+                linhas.forEach(linha => {
+                    const match = linha.match(/group-title="([^"]+)"/);
+                    if (match) categorias.add(match[1]);
+                });
+
+                status.style.display = 'none';
+                Array.from(categorias).sort().forEach(cat => {
+                    const div = document.createElement('div');
+                    div.className = 'card';
+                    div.innerText = cat;
+                    div.onclick = () => {
+                        localStorage.setItem('cat_escolhida', cat);
+                        window.location.href = 'canais.html';
+                    };
+                    container.appendChild(div);
+                });
+
+            } catch (e) {
+                status.innerHTML = `
+                    <div class="erro-box">
+                        <strong>ERRO DE CONEXÃO</strong><br>
+                        O servidor da Hostinger não conseguiu ler a lista.<br><br>
+                        Dica: Verifique se o arquivo <b>proxy.php</b> está na Hostinger.
+                    </div>`;
+            }
         }
 
-        // Inicia o processo
-        obterDados();
+        carregarTudo();
     </script>
 </body>
 </html>
