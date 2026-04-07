@@ -28,14 +28,15 @@
             const status = document.getElementById('status');
 
             try {
-                // AQUI ESTÁ A MÁGICA: Você chama o SEU script da Hostinger
-                // Substitua 'SEUDOMINIO.com.br' pelo seu link da Hostinger
                 const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
                 
                 const response = await fetch(meuProxy + encodeURIComponent(listaM3U));
                 const texto = await response.text();
 
                 if (texto.includes("#EXTM3U")) {
+                    // Salva o texto para a página canais.html usar
+                    localStorage.setItem('m3u_cache', texto);
+
                     status.style.display = 'none';
                     const categorias = new Set();
                     const linhas = texto.split('\n');
@@ -49,7 +50,13 @@
                         const div = document.createElement('div');
                         div.className = 'card';
                         div.innerText = cat;
-                        div.onclick = () => { localStorage.setItem('cat_escolhida', cat); window.location.href = 'canais.html'; };
+
+                        // REDIRECIONAMENTO AQUI:
+                        div.onclick = () => {
+                            localStorage.setItem('cat_escolhida', cat);
+                            window.location.href = 'canais.html';
+                        };
+
                         container.appendChild(div);
                     });
                 } else {
