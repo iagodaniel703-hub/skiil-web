@@ -6,148 +6,120 @@
     <title>Skkil Player - Categorias</title>
     <style>
         body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', sans-serif;
             background-color: #0a0a0a;
             color: white;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-        }
-
-        .header {
+            font-family: Arial, sans-serif;
+            margin: 0;
             padding: 20px;
-            background: #111;
+        }
+        .header {
             display: flex;
             align-items: center;
-            border-bottom: 1px solid #007bff;
+            justify-content: space-between;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
         }
-
         .btn-voltar {
-            background: #222;
+            background: #333;
             color: white;
-            border: 1px solid #333;
             padding: 8px 15px;
             border-radius: 5px;
-            cursor: pointer;
-            margin-right: 15px;
+            text-decoration: none;
+            font-size: 14px;
         }
-
-        .title { font-size: 18px; font-weight: bold; text-transform: uppercase; }
-
-        #loading {
-            text-align: center;
-            margin-top: 50px;
-            color: #007bff;
-        }
-
         .lista-categorias {
-            flex: 1;
-            overflow-y: auto;
-            padding: 15px;
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
             gap: 15px;
         }
-
         .categoria-card {
             background: #151515;
-            border: 1px solid #222;
-            padding: 20px 10px;
-            border-radius: 10px;
+            border: 1px solid #333;
+            padding: 20px;
             text-align: center;
+            border-radius: 10px;
             cursor: pointer;
             transition: 0.3s;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
         }
-
         .categoria-card:hover {
             border-color: #007bff;
             background: #1a1a1a;
-            transform: translateY(-3px);
         }
-
-        .categoria-card i { font-size: 24px; margin-bottom: 10px; color: #007bff; }
-        .categoria-card span { font-size: 14px; font-weight: 500; }
+        #status-msg {
+            text-align: center;
+            color: #007bff;
+            margin-top: 50px;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <button class="btn-voltar" onclick="window.location.href='player.html'">⬅ Voltar</button>
-        <div class="title" id="titulo_pagina">Categorias</div>
+        <a href="index.html" class="btn-voltar">← Voltar</a>
+        <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
+        <span></span>
     </div>
 
-    <div id="loading">Carregando categorias da sua lista...</div>
-
-    <div class="lista-categorias" id="container_categorias">
-        </div>
+    <div id="status-msg">Carregando categorias...</div>
+    <div class="lista-categorias" id="categorias-container"></div>
 
     <script>
-        const tipoEscolhido = localStorage.getItem('tipo_escolhido'); // 'live', 'movie' ou 'series'
-        const urlM3U = localStorage.getItem('cliente_lista');
+        // 1. Pega os dados que salvamos no login (script.js)
+        const listaM3U = localStorage.getItem('cliente_lista');
+        const nomeCliente = localStorage.getItem('cliente_nome');
 
-        window.onload = function() {
-            if (!urlM3U) {
-                window.location.href = "index.html";
+        if (nomeCliente) {
+            document.getElementById('nome-usuario').innerText = "Olá, " + nomeCliente;
+        }
+
+        async function carregarCategorias() {
+            const container = document.getElementById('categorias-container');
+            const statusMsg = document.getElementById('status-msg');
+
+            if (!listaM3U) {
+                statusMsg.innerText = "Erro: Lista não encontrada. Faça login novamente.";
+                statusMsg.style.color = "red";
                 return;
             }
-            
-            // Ajusta o título conforme a escolha anterior
-            const titulos = { 'live': 'Canais Ao-Vivo', 'movie': 'Filmes', 'series': 'Séries' };
-            document.getElementById('titulo_pagina').innerText = titulos[tipoEscolhido] || 'Categorias';
 
-            buscarCategorias();
-        };
-
-        async function buscarCategorias() {
             try {
-                // Usamos um proxy para evitar erro de CORS se necessário
-                const response = await fetch(urlM3U);
-                const textoM3U = await response.text();
-                
-                // Regex para capturar o group-title="NOME DA CATEGORIA"
-                const regex = /group-title="([^"]+)"/g;
-                let match;
-                const categoriasSet = new Set();
+                // Faz a leitura da lista M3U (via proxy para evitar erro de CORS se necessário)
+                const response = await fetch(listaM3U);
+                const data = await response.text();
 
-                while ((match = regex.exec(textoM3U)) !== null) {
-                    categoriasSet.add(match[1]);
+                // Lógica simples para extrair nomes de grupos (#EXTGRP ou group-title)
+                const linhas = data.split('\n');
+                const categorias = new Set();
+
+                linhas.forEach(linha => {
+                    if (linha.includes('group-title="')) {
+                        const match = linha.match(/group-title="([^"]+)"/);
+                        if (match) categorias.add(match[1]);
+                    }
+                });
+
+                if (categorias.size === 0) {
+                    statusMsg.innerText = "Nenhuma categoria encontrada na sua lista.";
+                } else {
+                    statusMsg.style.display = 'none';
+                    categorias.forEach(cat => {
+                        const div = document.createElement('div');
+                        div.className = 'categoria-card';
+                        div.innerText = cat;
+                        div.onclick = () => alert('Abrindo categoria: ' + cat);
+                        container.appendChild(div);
+                    });
                 }
 
-                exibirCategorias(Array.from(categoriasSet).sort());
             } catch (error) {
-                console.error("Erro ao ler lista:", error);
-                document.getElementById('loading').innerText = "Erro ao carregar lista. Verifique sua conexão.";
+                console.error(error);
+                statusMsg.innerText = "Erro ao carregar lista. Verifique o link M3U no painel.";
+                statusMsg.style.color = "red";
             }
         }
 
-        function exibirCategorias(categorias) {
-            const container = document.getElementById('container_categorias');
-            const loading = document.getElementById('loading');
-            
-            loading.style.display = "none";
-            container.innerHTML = "";
-
-            categorias.forEach(cat => {
-                const card = document.createElement('div');
-                card.className = 'categoria-card';
-                card.onclick = () => {
-                    localStorage.setItem('categoria_selecionada', cat);
-                    window.location.href = 'canais.html';
-                };
-
-                // Ícone padrão dependendo do tipo
-                let icone = tipoEscolhido === 'live' ? '📺' : (tipoEscolhido === 'movie' ? '🎬' : '📂');
-
-                card.innerHTML = `<i>${icone}</i><span>${cat}</span>`;
-                container.appendChild(card);
-            });
-        }
+        carregarCategorias();
     </script>
 </body>
 </html>
