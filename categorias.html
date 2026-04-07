@@ -5,15 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body { background-color: #0a0a0a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; }
+        body { background-color: #0a0a0a; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
         .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 25px; }
         .btn-voltar { background: #222; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; margin-right: 20px; border: 1px solid #333; }
-        .lista-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; }
-        .categoria-card { background: #151515; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.3s; font-weight: bold; text-transform: uppercase; font-size: 13px; }
-        .categoria-card:hover { border-color: #007bff; background: #007bff22; transform: translateY(-3px); }
-        #status-msg { text-align: center; margin-top: 60px; color: #007bff; font-size: 18px; }
+        .lista-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+        .categoria-card { background: #151515; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: bold; text-transform: uppercase; font-size: 12px; }
+        .categoria-card:hover { border-color: #007bff; background: #007bff22; transform: translateY(-2px); }
+        #status-msg { text-align: center; margin-top: 50px; color: #007bff; font-size: 16px; }
         .erro-alerta { color: #ff4444; background: rgba(255, 68, 68, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4444; text-align: center; }
-        .btn-tentar { margin-top: 15px; padding: 12px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; width: 100%; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -23,7 +22,7 @@
         <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
     </div>
 
-    <div id="status-msg">Carregando sua grade de programação...</div>
+    <div id="status-msg">Tentando burlar bloqueio de segurança...</div>
     <div class="lista-categorias" id="categorias-container"></div>
 
     <script>
@@ -39,71 +38,59 @@
             const statusMsg = document.getElementById('status-msg');
 
             if (!listaM3U) {
-                statusMsg.innerHTML = "<div class='erro-alerta'>Erro: Link da lista não encontrado.</div>";
+                statusMsg.innerHTML = "Erro: Link não encontrado.";
                 return;
             }
 
-            // Limpa o link vindo do banco de dados (remove as barras invertidas)
-            const urlFinal = listaM3U.replace(/\\\//g, "/");
-            
-            // Lista de Proxies para tentar contornar o bloqueio de segurança
-            const proxies = [
-                "https://api.allorigins.win/raw?url=",
-                "https://corsproxy.io/?",
-                "https://thingproxy.freeboard.io/fetch/"
-            ];
+            try {
+                // PASSO 1: Burlar as barras invertidas do banco de dados (\/)
+                // Isso transforma http:\/\/ em http://
+                const linkTratado = listaM3U.replace(/\\/g, "");
 
-            let sucesso = false;
-            let textoM3U = "";
+                // PASSO 2: Burlar o bloqueio HTTPS usando o proxy do AllOrigins
+                // Ele baixa o conteúdo no servidor deles e te entrega via HTTPS
+                const proxyBypass = "https://api.allorigins.win/raw?url=" + encodeURIComponent(linkTratado);
 
-            for (let proxy of proxies) {
-                try {
-                    statusMsg.innerText = "Tentando conexão segura...";
-                    const response = await fetch(proxy + encodeURIComponent(urlFinal));
-                    if (response.ok) {
-                        textoM3U = await response.text();
-                        if (textoM3U.includes("#EXTM3U")) {
-                            sucesso = true;
-                            break;
-                        }
-                    }
-                } catch (e) {
-                    console.log("Tentando próximo proxy...");
-                }
-            }
+                const response = await fetch(proxyBypass);
+                if (!response.ok) throw new Error("Servidor offline");
 
-            if (sucesso) {
-                statusMsg.style.display = 'none';
+                const textoM3U = await response.text();
+                
+                // PASSO 3: Extrair categorias
                 const categoriasSet = new Set();
                 const linhas = textoM3U.split('\n');
 
                 linhas.forEach(linha => {
                     const match = linha.match(/group-title="([^"]+)"/);
-                    if (match && match[1]) categoriasSet.add(match[1]);
+                    if (match && match[1]) {
+                        categoriasSet.add(match[1]);
+                    }
                 });
 
                 if (categoriasSet.size === 0) {
-                    statusMsg.innerHTML = "<div class='erro-alerta'>Nenhuma categoria encontrada na lista.</div>";
+                    statusMsg.innerHTML = "<div class='erro-alerta'>Lista vazia ou formato incompatível.</div>";
                 } else {
+                    statusMsg.style.display = 'none';
                     Array.from(categoriasSet).sort().forEach(cat => {
                         const card = document.createElement('div');
                         card.className = 'categoria-card';
                         card.innerText = cat;
                         card.onclick = () => {
                             localStorage.setItem('categoria_ativa', cat);
-                            alert("Abrindo: " + cat);
+                            alert("Categoria selecionada: " + cat);
                         };
                         container.appendChild(card);
                     });
                 }
-            } else {
+
+            } catch (error) {
+                console.error(error);
                 statusMsg.innerHTML = `
                     <div class="erro-alerta">
-                        <strong>ERRO DE CONEXÃO</strong><br>
-                        O servidor da lista (playcine.cloud) recusou a conexão segura.<br><br>
-                        1. Verifique se o link no seu painel está correto.<br>
-                        2. Tente usar uma <b>Guia Anônima</b>.<br>
-                        <button class="btn-tentar" onclick="location.reload()">RECARREGAR PÁGINA</button>
+                        <strong>ERRO CRÍTICO DE CONEXÃO</strong><br>
+                        O navegador bloqueou a leitura da lista HTTP.<br><br>
+                        <strong>COMO RESOLVER AGORA:</strong><br>
+                        Abra o site em uma <b>GUIA ANÔNIMA</b> do Chrome.
                     </div>`;
             }
         }
