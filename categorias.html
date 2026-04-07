@@ -12,7 +12,7 @@
         .categoria-card { background: #151515; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 12px; cursor: pointer; transition: 0.3s; font-weight: bold; }
         .categoria-card:hover { border-color: #007bff; background: #007bff22; transform: translateY(-3px); }
         #status-msg { text-align: center; margin-top: 60px; color: #007bff; font-size: 18px; }
-        .erro-box { background: rgba(255, 0, 0, 0.1); border: 1px solid red; padding: 15px; border-radius: 8px; color: #ff6666; }
+        .erro-alerta { color: #ff4444; background: rgba(255, 68, 68, 0.1); padding: 15px; border-radius: 10px; border: 1px solid #ff4444; line-height: 1.6; }
     </style>
 </head>
 <body>
@@ -22,7 +22,7 @@
         <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
     </div>
 
-    <div id="status-msg">Conectando ao servidor da lista...</div>
+    <div id="status-msg">Conectando ao servidor seguro...</div>
     <div class="lista-categorias" id="categorias-container"></div>
 
     <script>
@@ -38,26 +38,26 @@
             const statusMsg = document.getElementById('status-msg');
 
             if (!listaM3U) {
-                statusMsg.innerText = "Erro: Link da lista não encontrado.";
+                statusMsg.innerHTML = "<div class='erro-alerta'>Erro: Link da lista não encontrado.</div>";
                 return;
             }
 
-            // Tentativa de carregar usando um proxy diferente se o primeiro falhar
             try {
-                // Remove barras extras e garante que o link está limpo
-                const linkLimpo = listaM3U.replace(/\\/g, "");
+                // Limpa o link de barras extras que o JSON pode ter gerado
+                const urlLimpa = listaM3U.replace(/\\\//g, "/");
                 
-                // Usamos o Proxy 'Cors-anywhere' ou 'AllOrigins'
-                const proxy = 'https://api.allorigins.win/raw?url=';
+                // Usamos o proxy do CorsProxy.io que lida melhor com HTTP -> HTTPS
+                const proxyUrl = "https://corsproxy.io/?" + encodeURIComponent(urlLimpa);
                 
-                const response = await fetch(proxy + encodeURIComponent(linkLimpo));
+                const response = await fetch(proxyUrl);
                 
-                if (!response.ok) throw new Error("Erro na resposta do servidor");
+                if (!response.ok) throw new Error("Erro no Proxy");
 
                 const textoM3U = await response.text();
                 
+                // Verifica se o conteúdo parece uma lista M3U
                 if (!textoM3U.includes("#EXTM3U")) {
-                    throw new Error("O arquivo baixado não é uma lista válida.");
+                    throw new Error("O servidor retornou um arquivo inválido.");
                 }
 
                 const linhas = textoM3U.split('\n');
@@ -71,7 +71,7 @@
                 });
 
                 if (categoriasSet.size === 0) {
-                    statusMsg.innerHTML = "<div class='erro-box'>Lista carregada, mas nenhuma categoria encontrada.</div>";
+                    statusMsg.innerHTML = "<div class='erro-alerta'>Lista carregada, mas nenhuma categoria encontrada.</div>";
                 } else {
                     statusMsg.style.display = 'none';
                     Array.from(categoriasSet).sort().forEach(cat => {
@@ -79,8 +79,8 @@
                         card.className = 'categoria-card';
                         card.innerText = cat;
                         card.onclick = () => {
-                            localStorage.setItem('categoria_selecionada', cat);
-                            alert("Abrindo: " + cat);
+                            localStorage.setItem('categoria_ativa', cat);
+                            alert("Categoria selecionada: " + cat);
                         };
                         container.appendChild(card);
                     });
@@ -89,10 +89,10 @@
             } catch (error) {
                 console.error(error);
                 statusMsg.innerHTML = `
-                    <div class="erro-box">
-                        <strong>Falha na Conexão</strong><br>
-                        O link <u>playcine.cloud</u> é inseguro (HTTP) e o navegador bloqueou.<br><br>
-                        <button onclick="location.reload()" style="padding:10px; cursor:pointer">Tentar Novamente</button>
+                    <div class="erro-alerta">
+                        <strong>Bloqueio de Segurança Detectado</strong><br>
+                        O navegador impediu a conexão com o servidor de canais.<br><br>
+                        <strong>DICA:</strong> Tente abrir o site em uma <b>Guia Anônima</b> ou use um navegador que aceite conteúdo misto.
                     </div>`;
             }
         }
