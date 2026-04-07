@@ -3,65 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Skkil Player - Categorias</title>
+    <title>Skkil Player</title>
     <style>
-        body { background:#000; color:#fff; font-family:sans-serif; padding:20px; text-align:center; }
-        .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
-        .card { background:#111; border:1px solid #007bff; padding:15px; border-radius:8px; font-weight:bold; text-transform:uppercase; font-size:11px; }
-        .card:active { background:#007bff; }
-        #status { color:#007bff; margin-top:50px; }
+        body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 15px; }
+        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        
+        /* Estilo dos Cards */
+        .card { 
+            background: #111; border: 1px solid #222; padding: 25px 10px; 
+            text-align: center; border-radius: 12px; font-weight: bold; 
+            text-transform: uppercase; font-size: 11px;
+        }
+
+        /* Efeito de carregamento (Skeleton) */
+        .skeleton {
+            background: #1a1a1a;
+            height: 80px;
+            border-radius: 12px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
 
-    <h2 id="nome-id">SKKIL PLAYER</h2>
-    <div id="status">Sincronizando via Servidor Seguro...</div>
-    <div id="container" class="grid"></div>
+    <div class="header">
+        <h3 id="nome-id">SKKIL PLAYER</h3>
+    </div>
+
+    <div id="loading-grid" class="grid">
+        <div class="skeleton"></div><div class="skeleton"></div>
+        <div class="skeleton"></div><div class="skeleton"></div>
+    </div>
+
+    <div id="container" class="grid" style="display:none;"></div>
 
     <script>
-        const listaM3U = localStorage.getItem('cliente_lista');
-        const nomeCli = localStorage.getItem('cliente_nome');
-        if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
+        const listaUrl = localStorage.getItem('cliente_lista');
+        const proxy = "https://skkilarena.com.br/proxy.php?url=";
 
-        async function carregarComBypass() {
-            const container = document.getElementById('container');
-            const status = document.getElementById('status');
-
-            try {
-                // AQUI ESTÁ A MÁGICA: Você chama o SEU script da Hostinger
-                // Substitua 'SEUDOMINIO.com.br' pelo seu link da Hostinger
-                const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
-                
-                const response = await fetch(meuProxy + encodeURIComponent(listaM3U));
-                const texto = await response.text();
-
-                if (texto.includes("#EXTM3U")) {
-                    status.style.display = 'none';
-                    const categorias = new Set();
-                    const linhas = texto.split('\n');
-
-                    linhas.forEach(l => {
-                        const m = l.match(/group-title="([^"]+)"/);
-                        if (m) categorias.add(m[1]);
-                    });
-
-                    Array.from(categorias).sort().forEach(cat => {
-                        const div = document.createElement('div');
-                        div.className = 'card';
-                        div.innerText = cat;
-                        div.onclick = () => alert("Abrindo " + cat);
-                        container.appendChild(div);
-                    });
-                } else {
-                    throw new Error("Lista não recebida");
+        async function obterDados() {
+            // Verifica se já temos a lista salva hoje para não baixar de novo
+            let listaSalva = localStorage.getItem('m3u_cache');
+            
+            if (!listaSalva) {
+                try {
+                    const response = await fetch(proxy + encodeURIComponent(listaUrl));
+                    listaSalva = await response.text();
+                    localStorage.setItem('m3u_cache', listaSalva); // Salva no celular
+                } catch (e) {
+                    document.getElementById('loading-grid').innerHTML = "Erro ao conectar.";
+                    return;
                 }
-            } catch (e) {
-                status.innerHTML = "Erro de Sincronização. Verifique o arquivo proxy.php na Hostinger.";
-                status.style.color = "red";
             }
+            processarCategorias(listaSalva);
         }
 
-        carregarComBypass();
+        function processarCategorias(texto) {
+            const categorias = new Set();
+            const linhas = texto.split('\n');
+
+            linhas.forEach(l => {
+                const m = l.match(/group-title="([^"]+)"/);
+                if (m) categorias.add(m[1]);
+            });
+
+            const container = document.getElementById('container');
+            const loading = document.getElementById('loading-grid');
+
+            Array.from(categorias).sort().forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'card';
+                div.innerText = cat;
+                div.onclick = () => {
+                    localStorage.setItem('cat_escolhida', cat);
+                    window.location.href = 'canais.html';
+                };
+                container.appendChild(div);
+            });
+
+            loading.style.display = 'none';
+            container.style.display = 'grid';
+        }
+
+        obterDados();
     </script>
 </body>
 </html>
