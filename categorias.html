@@ -7,81 +7,94 @@
     <style>
         body { background:#000; color:#fff; font-family:sans-serif; padding:20px; text-align:center; }
         .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
-        .card { background:#111; border:1px solid #007bff; padding:20px 10px; border-radius:8px; font-weight:bold; text-transform:uppercase; font-size:11px; min-height:60px; display:flex; align-items:center; justify-content:center; }
+        .card { 
+            background:#111; 
+            border:1px solid #007bff; 
+            padding:20px 10px; 
+            border-radius:8px; 
+            font-weight:bold; 
+            text-transform:uppercase; 
+            font-size:11px; 
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
         .card:active { background:#007bff; }
-        #status { color:#007bff; margin-top:50px; font-weight:bold; }
-        .erro-msg { color: #ff4444; border: 1px solid #ff4444; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; }
+        #status { color:#007bff; margin-top:50px; }
     </style>
 </head>
 <body>
 
     <h2 id="nome-id">SKKIL PLAYER</h2>
-    <div id="status">Sincronizando com Servidor...</div>
+    <div id="status">Sincronizando via Servidor Seguro...</div>
     <div id="container" class="grid"></div>
 
     <script>
-        async function iniciarCarregamento() {
+        // Pega os dados salvos no login
+        const listaM3U = localStorage.getItem('cliente_lista');
+        const nomeCli = localStorage.getItem('cliente_nome');
+        
+        if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
+
+        async function carregarComBypass() {
             const container = document.getElementById('container');
             const status = document.getElementById('status');
-            
-            // 1. Pega e limpa o nome
-            const nomeCli = localStorage.getItem('cliente_nome');
-            if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
 
-            // 2. PEGA E LIMPA O LINK (CRITICAL)
-            let linkBruto = localStorage.getItem('cliente_lista');
-            if(!linkBruto) {
+            if (!listaM3U) {
                 status.innerHTML = "Erro: Link não encontrado.";
                 return;
             }
 
-            // Limpa as barras invertidas (\/) e espaços extras
-            const linkFinal = linkBruto.replace(/\\/g, "").trim(); 
-
             try {
-                // 3. Chamada ao seu Proxy na Hostinger
-                const meuProxy = "https://skkilarena.com.br/proxy.php?url=";
-                const urlCompleta = meuProxy + encodeURIComponent(linkFinal);
-
-                const response = await fetch(urlCompleta);
+                // LIMPEZA: Garante que o link não tenha barras invertidas extras (\/)
+                const linkLimpo = listaM3U.replace(/\\/g, "");
+                
+                // Endereço do seu Proxy na Hostinger
+                const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
+                
+                const response = await fetch(meuProxy + encodeURIComponent(linkLimpo));
                 const texto = await response.text();
 
                 if (texto.includes("#EXTM3U")) {
+                    // SALVA A LISTA COMPLETA: Importante para a página de canais carregar rápido
                     localStorage.setItem('m3u_cache', texto);
-                    status.style.display = 'none';
                     
+                    status.style.display = 'none';
                     const categorias = new Set();
                     const linhas = texto.split('\n');
 
+                    // Extrai os nomes das categorias
                     linhas.forEach(l => {
                         const m = l.match(/group-title="([^"]+)"/);
                         if (m) categorias.add(m[1]);
                     });
 
+                    // Cria os botões na tela
                     Array.from(categorias).sort().forEach(cat => {
                         const div = document.createElement('div');
                         div.className = 'card';
                         div.innerText = cat;
+                        
+                        // REDIRECIONAMENTO: Salva qual foi clicada e vai para a lista de canais
                         div.onclick = () => {
                             localStorage.setItem('cat_escolhida', cat);
                             window.location.href = 'canais.html';
                         };
+                        
                         container.appendChild(div);
                     });
                 } else {
-                    throw new Error("Resposta do servidor não é uma lista válida.");
+                    throw new Error("Lista não recebida");
                 }
             } catch (e) {
-                status.innerHTML = `
-                    <div class="erro-msg">
-                        <strong>FALHA NA SINCRONIZAÇÃO</strong><br>
-                        O link no banco de dados pode estar off-line ou o arquivo 'proxy.php' na Hostinger está com erro.<br><br>
-                        <button onclick="location.reload()" style="background:#007bff; color:#fff; border:none; padding:8px; border-radius:4px;">Tentar Novamente</button>
-                    </div>`;
+                status.innerHTML = "Erro de Sincronização. Verifique o arquivo proxy.php na Hostinger.";
+                status.style.color = "red";
+                console.error(e);
             }
         }
 
-        iniciarCarregamento();
+        carregarComBypass();
     </script>
 </body>
 </html>
