@@ -7,7 +7,19 @@
     <style>
         body { background:#000; color:#fff; font-family:sans-serif; padding:20px; text-align:center; }
         .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
-        .card { background:#111; border:1px solid #007bff; padding:15px; border-radius:8px; font-weight:bold; text-transform:uppercase; font-size:11px; }
+        .card { 
+            background:#111; 
+            border:1px solid #007bff; 
+            padding:20px 10px; 
+            border-radius:8px; 
+            font-weight:bold; 
+            text-transform:uppercase; 
+            font-size:11px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 60px;
+        }
         .card:active { background:#007bff; }
         #status { color:#007bff; margin-top:50px; }
     </style>
@@ -21,21 +33,32 @@
     <script>
         const listaM3U = localStorage.getItem('cliente_lista');
         const nomeCli = localStorage.getItem('cliente_nome');
+        
         if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
 
         async function carregarComBypass() {
             const container = document.getElementById('container');
             const status = document.getElementById('status');
 
+            if (!listaM3U) {
+                status.innerHTML = "Erro: Link da lista não encontrado.";
+                return;
+            }
+
             try {
-                // AQUI ESTÁ A MÁGICA: Você chama o SEU script da Hostinger
-                // Substitua 'SEUDOMINIO.com.br' pelo seu link da Hostinger
+                // LIMPEZA: Remove barras invertidas (\/) que podem vir do banco de dados
+                const linkLimpo = listaM3U.replace(/\\/g, "");
+                
+                // Seu Proxy na Hostinger
                 const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
                 
-                const response = await fetch(meuProxy + encodeURIComponent(listaM3U));
+                const response = await fetch(meuProxy + encodeURIComponent(linkLimpo));
                 const texto = await response.text();
 
                 if (texto.includes("#EXTM3U")) {
+                    // Salva o texto bruto em cache para abrir os canais instantaneamente depois
+                    localStorage.setItem('m3u_cache', texto);
+                    
                     status.style.display = 'none';
                     const categorias = new Set();
                     const linhas = texto.split('\n');
@@ -49,15 +72,22 @@
                         const div = document.createElement('div');
                         div.className = 'card';
                         div.innerText = cat;
-                        div.onclick = () => alert("Abrindo " + cat);
+                        
+                        // REDIRECIONAMENTO PARA CANAIS.HTML
+                        div.onclick = () => {
+                            localStorage.setItem('cat_escolhida', cat);
+                            window.location.href = 'canais.html';
+                        };
+                        
                         container.appendChild(div);
                     });
                 } else {
-                    throw new Error("Lista não recebida");
+                    throw new Error("Lista não recebida corretamente.");
                 }
             } catch (e) {
-                status.innerHTML = "Erro de Sincronização. Verifique o arquivo proxy.php na Hostinger.";
+                status.innerHTML = "Erro de Sincronização.<br>Verifique o arquivo proxy.php ou sua conexão.";
                 status.style.color = "red";
+                console.error(e);
             }
         }
 
