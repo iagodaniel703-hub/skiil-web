@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skkil Player - Canais</title>
+    <style>
+        body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 15px; }
+        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 15px; position: sticky; top: 0; background: #050505; z-index: 10; }
+        .btn-voltar { background: #222; color: #fff; padding: 8px 12px; border-radius: 5px; text-decoration: none; font-size: 13px; margin-right: 10px; border: 1px solid #333; }
+        
+        .lista-canais { display: flex; flex-direction: column; gap: 8px; }
+        .canal-item { 
+            background: #111; border: 1px solid #222; padding: 12px; 
+            border-radius: 8px; display: flex; align-items: center; 
+            transition: 0.2s; cursor: pointer;
+        }
+        .canal-item:active { background: #007bff22; border-color: #007bff; }
+        .canal-img { width: 45px; height: 45px; border-radius: 5px; margin-right: 15px; background: #222; object-fit: contain; }
+        .canal-nome { font-size: 14px; font-weight: bold; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <a href="categorias.html" class="btn-voltar">← VOLTAR</a>
+        <h4 id="titulo-categoria" style="margin:0; font-size: 14px; color: #007bff;">CARREGANDO...</h4>
+    </div>
+
+    <div class="lista-canais" id="canais-container"></div>
+
+    <script>
+        const categoriaAtiva = localStorage.getItem('cat_escolhida');
+        const m3uCache = localStorage.getItem('m3u_cache');
+
+        function carregarCanais() {
+            if (!categoriaAtiva || !m3uCache) {
+                window.location.href = 'categorias.html';
+                return;
+            }
+
+            document.getElementById('titulo-categoria').innerText = categoriaAtiva;
+            const container = document.getElementById('canais-container');
+            const linhas = m3uCache.split('\n');
+
+            for (let i = 0; i < linhas.length; i++) {
+                // Verifica se a linha tem a categoria escolhida
+                if (linhas[i].includes(`group-title="${categoriaAtiva}"`)) {
+                    
+                    // Extrai o nome do canal
+                    const nomeMatch = linhas[i].match(/,(.*)/);
+                    const nomeCanal = nomeMatch ? nomeMatch[1].trim() : "Canal sem nome";
+
+                    // Extrai a logo do canal (tvg-logo)
+                    const logoMatch = linhas[i].match(/tvg-logo="([^"]+)"/);
+                    const logoUrl = logoMatch ? logoMatch[1] : 'https://via.placeholder.com/50?text=TV';
+
+                    // A linha seguinte geralmente é o link do vídeo
+                    const linkVideo = linhas[i + 1] ? linhas[i + 1].trim() : "";
+
+                    if (linkVideo && linkVideo.startsWith('http')) {
+                        const div = document.createElement('div');
+                        div.className = 'canal-item';
+                        div.innerHTML = `
+                            <img src="${logoUrl}" class="canal-img" onerror="this.src='https://via.placeholder.com/50?text=TV'">
+                            <div class="canal-nome">${nomeCanal}</div>
+                        `;
+                        
+                        div.onclick = () => {
+                            localStorage.setItem('url_video', linkVideo);
+                            localStorage.setItem('nome_video', nomeCanal);
+                            // Próximo passo: Criar o player.html
+                            alert("Abrindo: " + nomeCanal);
+                        };
+
+                        container.appendChild(div);
+                    }
+                }
+            }
+        }
+
+        carregarCanais();
+    </script>
+</body>
+</html>
