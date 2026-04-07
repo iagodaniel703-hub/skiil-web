@@ -5,52 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body {
-            background-color: #0a0a0a;
-            color: white;
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-        .header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            border-bottom: 2px solid #007bff;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-        }
-        .btn-voltar {
-            background: #333;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-size: 14px;
-        }
-        .lista-categorias {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-        }
-        .categoria-card {
-            background: #151515;
-            border: 1px solid #333;
-            padding: 20px;
-            text-align: center;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-        .categoria-card:hover {
-            border-color: #007bff;
-            background: #1a1a1a;
-        }
-        #status-msg {
-            text-align: center;
-            color: #007bff;
-            margin-top: 50px;
-        }
+        body { background-color: #0a0a0a; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
+        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 20px; }
+        .btn-voltar { background: #333; color: white; padding: 8px 15px; border-radius: 5px; text-decoration: none; margin-right: 15px; }
+        .lista-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+        .categoria-card { background: #151515; border: 1px solid #333; padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; }
+        .categoria-card:hover { border-color: #007bff; }
+        #status-msg { text-align: center; margin-top: 50px; color: #007bff; }
     </style>
 </head>
 <body>
@@ -58,14 +19,12 @@
     <div class="header">
         <a href="index.html" class="btn-voltar">← Voltar</a>
         <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
-        <span></span>
     </div>
 
-    <div id="status-msg">Carregando categorias...</div>
+    <div id="status-msg">Lendo sua lista de canais...</div>
     <div class="lista-categorias" id="categorias-container"></div>
 
     <script>
-        // 1. Pega os dados que salvamos no login (script.js)
         const listaM3U = localStorage.getItem('cliente_lista');
         const nomeCliente = localStorage.getItem('cliente_nome');
 
@@ -78,43 +37,50 @@
             const statusMsg = document.getElementById('status-msg');
 
             if (!listaM3U) {
-                statusMsg.innerText = "Erro: Lista não encontrada. Faça login novamente.";
-                statusMsg.style.color = "red";
+                statusMsg.innerText = "Lista não encontrada no sistema.";
                 return;
             }
 
             try {
-                // Faz a leitura da lista M3U (via proxy para evitar erro de CORS se necessário)
-                const response = await fetch(listaM3U);
-                const data = await response.text();
+                // USANDO PROXY PARA EVITAR ERRO DE CONEXÃO (CORS)
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(listaM3U));
+                
+                if (!response.ok) throw new Error("Erro ao baixar arquivo M3U");
 
-                // Lógica simples para extrair nomes de grupos (#EXTGRP ou group-title)
+                const data = await response.text();
                 const linhas = data.split('\n');
                 const categorias = new Set();
 
                 linhas.forEach(linha => {
-                    if (linha.includes('group-title="')) {
-                        const match = linha.match(/group-title="([^"]+)"/);
-                        if (match) categorias.add(match[1]);
+                    // Procura por group-title ou EXTGRP na sua lista
+                    const match = linha.match(/group-title="([^"]+)"/) || linha.match(/#EXTGRP:([^\r\n]+)/);
+                    if (match) {
+                        categorias.add(match[1]);
                     }
                 });
 
                 if (categorias.size === 0) {
-                    statusMsg.innerText = "Nenhuma categoria encontrada na sua lista.";
+                    statusMsg.innerText = "Sua lista parece estar vazia ou o link está quebrado.";
                 } else {
                     statusMsg.style.display = 'none';
-                    categorias.forEach(cat => {
+                    // Criar botões para cada categoria encontrada
+                    Array.from(categorias).sort().forEach(cat => {
                         const div = document.createElement('div');
                         div.className = 'categoria-card';
                         div.innerText = cat;
-                        div.onclick = () => alert('Abrindo categoria: ' + cat);
+                        div.onclick = () => {
+                            localStorage.setItem('categoria_selecionada', cat);
+                            // Aqui você enviaria para uma página de canais, ex: canais.html
+                            alert('Abrindo canais de: ' + cat);
+                        };
                         container.appendChild(div);
                     });
                 }
 
             } catch (error) {
                 console.error(error);
-                statusMsg.innerText = "Erro ao carregar lista. Verifique o link M3U no painel.";
+                statusMsg.innerHTML = "Erro ao carregar lista.<br><small>Verifique se o link no painel termina em .php ou .m3u8</small>";
                 statusMsg.style.color = "red";
             }
         }
