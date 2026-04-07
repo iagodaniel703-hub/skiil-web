@@ -5,87 +5,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body { background: #050505; color: #fff; font-family: sans-serif; margin: 0; padding: 15px; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        .card { 
-            background: #111; border: 1px solid #222; padding: 25px 10px; 
-            text-align: center; border-radius: 12px; font-weight: bold; 
-            text-transform: uppercase; font-size: 11px;
-        }
-        .card:active { background: #007bff; border-color: #007bff; }
-        #status { text-align: center; margin-top: 40px; color: #007bff; }
-        .erro-box { border: 1px solid red; padding: 15px; color: #ff6666; border-radius: 10px; font-size: 13px; }
+        body { background:#000; color:#fff; font-family:sans-serif; padding:20px; text-align:center; }
+        .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px; }
+        .card { background:#111; border:1px solid #007bff; padding:15px; border-radius:8px; font-weight:bold; text-transform:uppercase; font-size:11px; }
+        .card:active { background:#007bff; }
+        #status { color:#007bff; margin-top:50px; }
     </style>
 </head>
 <body>
 
-    <h3 id="nome-user" style="text-align:center">SKKIL PLAYER</h3>
-    <div id="status">Limpando conexão e carregando...</div>
+    <h2 id="nome-id">SKKIL PLAYER</h2>
+    <div id="status">Sincronizando via Servidor Seguro...</div>
     <div id="container" class="grid"></div>
 
     <script>
-        async function carregarTudo() {
+        const listaM3U = localStorage.getItem('cliente_lista');
+        const nomeCli = localStorage.getItem('cliente_nome');
+        if(nomeCli) document.getElementById('nome-id').innerText = nomeCli;
+
+        async function carregarComBypass() {
             const container = document.getElementById('container');
             const status = document.getElementById('status');
-            
-            // 1. Pega os dados do localStorage
-            const nome = localStorage.getItem('cliente_nome');
-            const linkBruto = localStorage.getItem('cliente_lista');
-            if(nome) document.getElementById('nome-user').innerText = "Olá, " + nome;
-
-            if(!linkBruto) {
-                status.innerHTML = "Erro: Link não encontrado. Faça login novamente.";
-                return;
-            }
 
             try {
-                // 2. LIMPEZA CRÍTICA: Remove as barras invertidas (\/) que o banco gera
-                const urlLimpa = linkBruto.replace(/\\/g, "");
+                // AQUI ESTÁ A MÁGICA: Você chama o SEU script da Hostinger
+                // Substitua 'SEUDOMINIO.com.br' pelo seu link da Hostinger
+                const meuProxy = "https://skkilarena.com.br/proxy.php?url="; 
                 
-                // 3. Usa o SEU proxy na Hostinger (Verifique se o nome do arquivo está correto)
-                const meuProxy = "https://skkilarena.com.br/proxy.php?url=";
-                
-                const response = await fetch(meuProxy + encodeURIComponent(urlLimpa));
-                const data = await response.text();
+                const response = await fetch(meuProxy + encodeURIComponent(listaM3U));
+                const texto = await response.text();
 
-                if (!data.includes("#EXTM3U")) {
-                    throw new Error("Resposta inválida do servidor.");
+                if (texto.includes("#EXTM3U")) {
+                    status.style.display = 'none';
+                    const categorias = new Set();
+                    const linhas = texto.split('\n');
+
+                    linhas.forEach(l => {
+                        const m = l.match(/group-title="([^"]+)"/);
+                        if (m) categorias.add(m[1]);
+                    });
+
+                    Array.from(categorias).sort().forEach(cat => {
+                        const div = document.createElement('div');
+                        div.className = 'card';
+                        div.innerText = cat;
+                        div.onclick = () => alert("Abrindo " + cat);
+                        container.appendChild(div);
+                    });
+                } else {
+                    throw new Error("Lista não recebida");
                 }
-
-                // 4. Salva no cache para as próximas páginas
-                localStorage.setItem('m3u_cache', data);
-
-                const categorias = new Set();
-                const linhas = data.split('\n');
-
-                linhas.forEach(linha => {
-                    const match = linha.match(/group-title="([^"]+)"/);
-                    if (match) categorias.add(match[1]);
-                });
-
-                status.style.display = 'none';
-                Array.from(categorias).sort().forEach(cat => {
-                    const div = document.createElement('div');
-                    div.className = 'card';
-                    div.innerText = cat;
-                    div.onclick = () => {
-                        localStorage.setItem('cat_escolhida', cat);
-                        window.location.href = 'canais.html';
-                    };
-                    container.appendChild(div);
-                });
-
             } catch (e) {
-                status.innerHTML = `
-                    <div class="erro-box">
-                        <strong>ERRO DE CONEXÃO</strong><br>
-                        O servidor da Hostinger não conseguiu ler a lista.<br><br>
-                        Dica: Verifique se o arquivo <b>proxy.php</b> está na Hostinger.
-                    </div>`;
+                status.innerHTML = "Erro de Sincronização. Verifique o arquivo proxy.php na Hostinger.";
+                status.style.color = "red";
             }
         }
 
-        carregarTudo();
+        carregarComBypass();
     </script>
 </body>
 </html>
