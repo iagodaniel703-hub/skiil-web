@@ -5,97 +5,137 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skkil Player - Categorias</title>
     <style>
-        body { background-color: #0a0a0a; color: white; font-family: sans-serif; margin: 0; padding: 20px; }
-        .header { display: flex; align-items: center; border-bottom: 2px solid #007bff; padding-bottom: 10px; margin-bottom: 25px; }
-        .btn-voltar { background: #222; color: white; padding: 10px 18px; border-radius: 8px; text-decoration: none; margin-right: 20px; border: 1px solid #333; }
-        .lista-categorias { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
-        .categoria-card { background: #151515; border: 1px solid #333; padding: 20px; text-align: center; border-radius: 10px; cursor: pointer; transition: 0.3s; font-weight: bold; text-transform: uppercase; font-size: 12px; }
-        .categoria-card:hover { border-color: #007bff; background: #007bff22; transform: translateY(-2px); }
-        #status-msg { text-align: center; margin-top: 50px; color: #007bff; font-size: 16px; }
-        .erro-alerta { color: #ff4444; background: rgba(255, 68, 68, 0.1); padding: 20px; border-radius: 10px; border: 1px solid #ff4444; text-align: center; }
+        /* Design focado em dispositivos móveis (Mobile-First) */
+        body { 
+            background-color: #050505; 
+            color: #ffffff; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            margin: 0; 
+            padding: 15px; 
+            user-select: none; /* Impede selecionar texto no APK */
+        }
+        .header { 
+            display: flex; 
+            align-items: center; 
+            border-bottom: 2px solid #007bff; 
+            padding-bottom: 10px; 
+            margin-bottom: 20px; 
+        }
+        .btn-voltar { 
+            background: #1a1a1a; 
+            color: #fff; 
+            padding: 8px 15px; 
+            border-radius: 5px; 
+            text-decoration: none; 
+            font-size: 14px;
+            border: 1px solid #333;
+        }
+        .grid-categorias { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; /* Duas colunas para celular */
+            gap: 12px; 
+        }
+        .card { 
+            background: linear-gradient(145deg, #111, #1a1a1a); 
+            border: 1px solid #222; 
+            padding: 25px 10px; 
+            text-align: center; 
+            border-radius: 12px; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            font-size: 11px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            transition: 0.2s;
+        }
+        .card:active { 
+            transform: scale(0.95); 
+            border-color: #007bff; 
+            background: #007bff22;
+        }
+        #status { 
+            text-align: center; 
+            margin-top: 50px; 
+            color: #007bff; 
+            font-size: 14px;
+        }
+        .erro-alerta {
+            background: rgba(255, 0, 0, 0.1);
+            border: 1px solid #ff4444;
+            color: #ff4444;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
 
     <div class="header">
-        <a href="index.html" class="btn-voltar">← SAIR</a>
-        <h2 id="nome-usuario">CANAIS AO-VIVO</h2>
+        <a href="index.html" class="btn-voltar">SAIR</a>
+        <h3 id="nome-usuario" style="margin-left: 15px; font-size: 16px;">SKKIL PLAYER</h3>
     </div>
 
-    <div id="status-msg">Tentando burlar bloqueio de segurança...</div>
-    <div class="lista-categorias" id="categorias-container"></div>
+    <div id="status">Sincronizando com o servidor...</div>
+    <div class="grid-categorias" id="categorias-container"></div>
 
     <script>
-        const listaM3U = localStorage.getItem('cliente_lista');
-        const nomeCliente = localStorage.getItem('cliente_nome');
+        // Dados vindos do login
+        const listaUrl = localStorage.getItem('cliente_lista');
+        const nome = localStorage.getItem('cliente_nome');
 
-        if (nomeCliente) {
-            document.getElementById('nome-usuario').innerText = "Olá, " + nomeCliente;
-        }
+        if(nome) document.getElementById('nome-usuario').innerText = nome;
 
-        async function carregarCategorias() {
+        async function carregarGrade() {
             const container = document.getElementById('categorias-container');
-            const statusMsg = document.getElementById('status-msg');
+            const status = document.getElementById('status');
 
-            if (!listaM3U) {
-                statusMsg.innerHTML = "Erro: Link não encontrado.";
+            if (!listaUrl) {
+                status.innerHTML = "<div class='erro-alerta'>Lista não encontrada. Faça login novamente.</div>";
                 return;
             }
 
             try {
-                // PASSO 1: Burlar as barras invertidas do banco de dados (\/)
-                // Isso transforma http:\/\/ em http://
-                const linkTratado = listaM3U.replace(/\\/g, "");
-
-                // PASSO 2: Burlar o bloqueio HTTPS usando o proxy do AllOrigins
-                // Ele baixa o conteúdo no servidor deles e te entrega via HTTPS
-                const proxyBypass = "https://api.allorigins.win/raw?url=" + encodeURIComponent(linkTratado);
-
-                const response = await fetch(proxyBypass);
-                if (!response.ok) throw new Error("Servidor offline");
-
-                const textoM3U = await response.text();
+                // SOLUÇÃO REAL: Usando seu Proxy na Hostinger para burlar o bloqueio do APK
+                const proxyProprio = "https://skkilarena.com.br/proxy_m3u.php?url=";
+                const response = await fetch(proxyProprio + encodeURIComponent(listaUrl));
                 
-                // PASSO 3: Extrair categorias
+                if (!response.ok) throw new Error();
+
+                const m3uTexto = await response.text();
+                const linhas = m3uTexto.split('\n');
                 const categoriasSet = new Set();
-                const linhas = textoM3U.split('\n');
 
                 linhas.forEach(linha => {
                     const match = linha.match(/group-title="([^"]+)"/);
-                    if (match && match[1]) {
-                        categoriasSet.add(match[1]);
-                    }
+                    if (match) categoriasSet.add(match[1]);
                 });
 
                 if (categoriasSet.size === 0) {
-                    statusMsg.innerHTML = "<div class='erro-alerta'>Lista vazia ou formato incompatível.</div>";
+                    status.innerHTML = "<div class='erro-alerta'>Nenhuma categoria encontrada no servidor.</div>";
                 } else {
-                    statusMsg.style.display = 'none';
+                    status.style.display = 'none';
                     Array.from(categoriasSet).sort().forEach(cat => {
-                        const card = document.createElement('div');
-                        card.className = 'categoria-card';
-                        card.innerText = cat;
-                        card.onclick = () => {
+                        const div = document.createElement('div');
+                        div.className = 'card';
+                        div.innerText = cat;
+                        div.onclick = () => {
                             localStorage.setItem('categoria_ativa', cat);
-                            alert("Categoria selecionada: " + cat);
+                            alert("Carregando " + cat + "...");
                         };
-                        container.appendChild(card);
+                        container.appendChild(div);
                     });
                 }
 
-            } catch (error) {
-                console.error(error);
-                statusMsg.innerHTML = `
+            } catch (e) {
+                status.innerHTML = `
                     <div class="erro-alerta">
-                        <strong>ERRO CRÍTICO DE CONEXÃO</strong><br>
-                        O navegador bloqueou a leitura da lista HTTP.<br><br>
-                        <strong>COMO RESOLVER AGORA:</strong><br>
-                        Abra o site em uma <b>GUIA ANÔNIMA</b> do Chrome.
+                        <strong>ERRO DE CONEXÃO</strong><br>
+                        Não foi possível ler os dados do servidor Hostinger.
                     </div>`;
             }
         }
 
-        carregarCategorias();
+        carregarGrade();
     </script>
 </body>
 </html>
